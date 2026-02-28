@@ -2,7 +2,11 @@
 
 CLI for switching between multiple Claude Code accounts on macOS.
 
-Claude Code stores authentication in two places: `~/.claude.json` (account metadata) and the macOS Keychain (`Claude Code-credentials`). **claudini** manages named profiles that bundle both, letting you switch accounts with a single command. All credentials are stored securely in the macOS Keychain — nothing is ever written to disk as plain text.
+## Why
+
+Claude Code doesn't support multiple accounts. If you use Claude Code with different accounts — say a personal one and a work one — switching means manually replacing `~/.claude.json` and swapping the credential stored in the macOS Keychain. Do it wrong and you lose your config, break your session, or leak one account's credential into another.
+
+**claudini** solves this by managing named profiles that bundle both the config file and the keychain credential. You switch accounts with a single command (`claudini use work`), and everything else — syncing shared settings, swapping credentials, updating symlinks — happens automatically. All credentials stay in the macOS Keychain; nothing is ever written to disk as plain text.
 
 ## How it works
 
