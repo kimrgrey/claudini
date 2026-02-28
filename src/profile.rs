@@ -1,12 +1,12 @@
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde_json::Value;
 
 use crate::backup;
 use crate::config::{
-    claude_json_path, is_initialized, list_profiles, profile_claude_json,
-    profile_dir, profiles_dir, Config,
+    Config, claude_json_path, is_initialized, list_profiles, profile_claude_json, profile_dir,
+    profiles_dir,
 };
 use crate::keychain;
 use crate::sync::sync_shared_fields;
@@ -100,10 +100,10 @@ pub fn add_with_login(claudini_dir: &Path, claude_home: &Path, name: &str) -> Re
     let cfg = Config::load(claudini_dir)?;
 
     // Save current keychain credential to current active profile (if any)
-    if let Some(ref active) = cfg.active_profile {
-        if let Ok(cred) = keychain::read() {
-            let _ = keychain::write_profile(active, &cred);
-        }
+    if let Some(ref active) = cfg.active_profile
+        && let Ok(cred) = keychain::read()
+    {
+        let _ = keychain::write_profile(active, &cred);
     }
 
     // Remove symlink / file so claude starts fresh
@@ -168,21 +168,10 @@ pub fn switch(claudini_dir: &Path, claude_home: &Path, name: &str) -> Result<()>
         }
 
         // Sync shared fields from outgoing → incoming
-        if active != name {
-            if let Ok(from_data) = std::fs::read_to_string(&cj) {
-                if let Ok(from_val) = serde_json::from_str::<Value>(&from_data) {
-                    let target_path = profile_claude_json(claudini_dir, name);
-                    if let Ok(to_data) = std::fs::read_to_string(&target_path) {
-                        if let Ok(mut to_val) = serde_json::from_str::<Value>(&to_data) {
-                            sync_shared_fields(&from_val, &mut to_val);
-                            let _ = std::fs::write(
-                                &target_path,
-                                serde_json::to_string_pretty(&to_val)?,
-                            );
-                        }
-                    }
-                }
-            }
+        if active != name
+            && let Err(e) = sync_shared_fields_between(claudini_dir, &cj, name)
+        {
+            eprintln!("warning: failed to sync shared fields: {e:#}");
         }
     }
 
@@ -253,7 +242,12 @@ pub fn remove(claudini_dir: &Path, name: &str) -> Result<()> {
 }
 
 /// Rename a profile.
-pub fn rename(claudini_dir: &Path, claude_home: &Path, old_name: &str, new_name: &str) -> Result<()> {
+pub fn rename(
+    claudini_dir: &Path,
+    claude_home: &Path,
+    old_name: &str,
+    new_name: &str,
+) -> Result<()> {
     ensure_initialized(claudini_dir)?;
 
     let old_dir = profile_dir(claudini_dir, old_name);
@@ -326,13 +320,12 @@ pub fn migrate_all_profile_credentials(claudini_dir: &Path) -> usize {
     let mut count = 0;
     for name in &profiles {
         let cred_file = profile_dir(claudini_dir, name).join("credentials");
-        if cred_file.is_file() {
-            if let Ok(cred) = std::fs::read_to_string(&cred_file) {
-                if keychain::write_profile(name, &cred).is_ok() {
-                    let _ = std::fs::remove_file(&cred_file);
-                    count += 1;
-                }
-            }
+        if cred_file.is_file()
+            && let Ok(cred) = std::fs::read_to_string(&cred_file)
+            && keychain::write_profile(name, &cred).is_ok()
+        {
+            let _ = std::fs::remove_file(&cred_file);
+            count += 1;
         }
     }
     count
@@ -340,13 +333,31 @@ pub fn migrate_all_profile_credentials(claudini_dir: &Path) -> usize {
 
 fn migrate_profile_credential_if_needed(claudini_dir: &Path, name: &str) {
     let cred_file = profile_dir(claudini_dir, name).join("credentials");
-    if cred_file.is_file() {
-        if let Ok(cred) = std::fs::read_to_string(&cred_file) {
-            if keychain::write_profile(name, &cred).is_ok() {
-                let _ = std::fs::remove_file(&cred_file);
-            }
-        }
+    if cred_file.is_file()
+        && let Ok(cred) = std::fs::read_to_string(&cred_file)
+        && keychain::write_profile(name, &cred).is_ok()
+    {
+        let _ = std::fs::remove_file(&cred_file);
     }
+}
+
+fn sync_shared_fields_between(claudini_dir: &Path, cj: &Path, name: &str) -> Result<()> {
+    let from_data =
+        std::fs::read_to_string(cj).context("Failed to read outgoing profile's claude.json")?;
+    let from_val: Value = serde_json::from_str(&from_data)
+        .context("Failed to parse outgoing profile's claude.json")?;
+
+    let target_path = profile_claude_json(claudini_dir, name);
+    let to_data = std::fs::read_to_string(&target_path)
+        .with_context(|| format!("Failed to read incoming profile '{}' claude.json", name))?;
+    let mut to_val: Value = serde_json::from_str(&to_data)
+        .with_context(|| format!("Failed to parse incoming profile '{}' claude.json", name))?;
+
+    sync_shared_fields(&from_val, &mut to_val);
+    std::fs::write(&target_path, serde_json::to_string_pretty(&to_val)?)
+        .context("Failed to write synced claude.json")?;
+
+    Ok(())
 }
 
 fn read_email_from_claude_json(path: &Path) -> Option<String> {

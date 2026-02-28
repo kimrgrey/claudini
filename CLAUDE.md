@@ -10,10 +10,11 @@ claudini/
   src/
     main.rs        # CLI entry point (clap derive), subcommand enums, output formatting
     config.rs      # Path helpers, Config struct, directory layout
-    keychain.rs    # macOS Keychain read/write/delete via keyring crate
+    keychain.rs    # macOS Keychain read/write/delete via security CLI
     profile.rs     # Profile operations: init, add, add --login, use, list, remove, rename, current
-    backup.rs      # Backup operations: create, restore, list
+    backup.rs      # Backup operations: create, restore, delete, list
     sync.rs        # Shared field sync between profiles
+    update.rs      # Version update checking via GitHub releases API
 ```
 
 ## CLI
@@ -53,6 +54,7 @@ claudini backup list
 - Two output modes: human (colored, spinners, tables) and JSON (`--json` flag)
 - Claude home directory overridable via `--claude-home` flag or `CLAUDINI_CLAUDE_HOME` env var
 - Account-specific fields listed in `sync.rs::ACCOUNT_SPECIFIC_FIELDS`
+- When stdout is not a terminal (piped/redirected), colors should be stripped from table output and `console::Style` is skipped entirely. Redirecting command output to a file should produce clean text.
 
 ## Git & PR conventions
 
@@ -65,6 +67,7 @@ claudini backup list
 - Try to keep branch names short but readable
 - Always remove previously added but now unused code
 - Do not include test plans in PR descriptions or commit messages
+- Before committing, always run `cargo fmt` and `cargo clippy --all-targets -- -D warnings` and fix any issues
 
 ## Build & run
 
@@ -79,7 +82,7 @@ cargo run -- <command>
 - `serde` + `serde_json` — JSON handling
 - `dirs` — home directory resolution
 - `anyhow` — error handling
-- `keyring` (apple-native) — macOS Keychain access
+- macOS `security` CLI — Keychain access (via `std::process::Command`)
 - `console` — terminal colors/styling
 - `indicatif` — progress spinners
 - `comfy-table` — formatted table output

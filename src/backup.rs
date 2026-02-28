@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 use crate::config::{backup_dir, claude_json_path, list_backups as config_list_backups};
 use crate::keychain;
@@ -16,8 +16,7 @@ pub fn create(claudini_dir: &Path, claude_home: &Path, name: &str) -> Result<()>
     // Copy claude.json (resolving symlink)
     let cj = claude_json_path(claude_home);
     if cj.exists() {
-        std::fs::copy(&cj, bdir.join("claude.json"))
-            .context("Failed to copy claude.json")?;
+        std::fs::copy(&cj, bdir.join("claude.json")).context("Failed to copy claude.json")?;
     } else {
         bail!("~/.claude.json not found — nothing to back up");
     }
@@ -106,13 +105,12 @@ pub fn migrate_all_backup_credentials(claudini_dir: &Path) -> usize {
     let mut count = 0;
     for name in &backups {
         let cred_file = backup_dir(claudini_dir, name).join("credentials");
-        if cred_file.is_file() {
-            if let Ok(cred) = std::fs::read_to_string(&cred_file) {
-                if keychain::write_backup(name, &cred).is_ok() {
-                    let _ = std::fs::remove_file(&cred_file);
-                    count += 1;
-                }
-            }
+        if cred_file.is_file()
+            && let Ok(cred) = std::fs::read_to_string(&cred_file)
+            && keychain::write_backup(name, &cred).is_ok()
+        {
+            let _ = std::fs::remove_file(&cred_file);
+            count += 1;
         }
     }
     count
@@ -120,12 +118,11 @@ pub fn migrate_all_backup_credentials(claudini_dir: &Path) -> usize {
 
 fn migrate_backup_credential_if_needed(claudini_dir: &Path, name: &str) {
     let cred_file = backup_dir(claudini_dir, name).join("credentials");
-    if cred_file.is_file() {
-        if let Ok(cred) = std::fs::read_to_string(&cred_file) {
-            if keychain::write_backup(name, &cred).is_ok() {
-                let _ = std::fs::remove_file(&cred_file);
-            }
-        }
+    if cred_file.is_file()
+        && let Ok(cred) = std::fs::read_to_string(&cred_file)
+        && keychain::write_backup(name, &cred).is_ok()
+    {
+        let _ = std::fs::remove_file(&cred_file);
     }
 }
 
@@ -135,7 +132,11 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
         let entry = entry?;
         let src_path = entry.path();
         let dst_path = dst.join(entry.file_name());
-        if src_path.is_dir() {
+        let ft = entry.file_type()?;
+        if ft.is_symlink() {
+            let target = std::fs::read_link(&src_path)?;
+            std::os::unix::fs::symlink(&target, &dst_path)?;
+        } else if ft.is_dir() {
             copy_dir_recursive(&src_path, &dst_path)?;
         } else {
             std::fs::copy(&src_path, &dst_path)?;

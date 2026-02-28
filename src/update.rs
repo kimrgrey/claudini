@@ -51,7 +51,10 @@ fn fetch_latest_version() -> Option<String> {
     }
 
     let release: GitHubRelease = serde_json::from_slice(&output.stdout).ok()?;
-    let version = release.tag_name.strip_prefix('v').unwrap_or(&release.tag_name);
+    let version = release
+        .tag_name
+        .strip_prefix('v')
+        .unwrap_or(&release.tag_name);
     Some(version.to_string())
 }
 
@@ -61,7 +64,10 @@ fn print_update_notice(current: &str, latest: &str) {
         style("Update available:").yellow().bold(),
         style(current).dim(),
         style(latest).green().bold(),
-        style("curl -fsSL https://raw.githubusercontent.com/kimrgrey/claudini/main/install.sh | sh").cyan(),
+        style(
+            "curl -fsSL https://raw.githubusercontent.com/kimrgrey/claudini/main/install.sh | sh"
+        )
+        .cyan(),
     );
 }
 
