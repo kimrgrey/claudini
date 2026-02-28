@@ -20,9 +20,9 @@ claudini/
 
 ```
 claudini init
-claudini use <name>                  # shortcut for profile use
+claudini use <name> [--launch]       # shortcut for profile use
 claudini profile add <name> [--login]
-claudini profile use <name>
+claudini profile use <name> [--launch]
 claudini profile list
 claudini profile remove <name>
 claudini profile rename <old> <new>

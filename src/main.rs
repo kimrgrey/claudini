@@ -7,7 +7,7 @@ mod update;
 
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, Color, Table};
 use console::style;
@@ -37,6 +37,10 @@ enum Command {
     Use {
         /// Profile name
         name: String,
+
+        /// Launch claude after switching
+        #[arg(short, long)]
+        launch: bool,
     },
 
     /// Manage profiles
@@ -68,6 +72,10 @@ enum ProfileCommand {
     Use {
         /// Profile name
         name: String,
+
+        /// Launch claude after switching
+        #[arg(short, long)]
+        launch: bool,
     },
 
     /// List all profiles
@@ -184,7 +192,7 @@ fn run(cli: Cli) -> Result<()> {
             }
         }
 
-        Command::Use { name } => {
+        Command::Use { name, launch } => {
             let spinner = make_spinner(is_json, "Switching profile...");
             profile::switch(&claudini_dir, &claude_home, &name)?;
             finish_spinner(spinner);
@@ -200,6 +208,12 @@ fn run(cli: Cli) -> Result<()> {
                     style("✓").green().bold(),
                     style(&name).cyan()
                 );
+            }
+
+            if launch && !is_json {
+                use std::os::unix::process::CommandExt;
+                let err = std::process::Command::new("claude").exec();
+                bail!("Failed to launch claude: {}", err);
             }
         }
 
@@ -233,7 +247,7 @@ fn run(cli: Cli) -> Result<()> {
                 }
             }
 
-            ProfileCommand::Use { name } => {
+            ProfileCommand::Use { name, launch } => {
                 let spinner = make_spinner(is_json, "Switching profile...");
                 profile::switch(&claudini_dir, &claude_home, &name)?;
                 finish_spinner(spinner);
@@ -249,6 +263,12 @@ fn run(cli: Cli) -> Result<()> {
                         style("✓").green().bold(),
                         style(&name).cyan()
                     );
+                }
+
+                if launch && !is_json {
+                    use std::os::unix::process::CommandExt;
+                    let err = std::process::Command::new("claude").exec();
+                    bail!("Failed to launch claude: {}", err);
                 }
             }
 

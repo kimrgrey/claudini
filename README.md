@@ -125,6 +125,14 @@ claudini use work
 
 Syncs shared fields, swaps the symlink and keychain credential. `claudini use` is a shortcut for `claudini profile use`.
 
+To switch and immediately launch Claude Code in one step:
+
+```bash
+claudini use work --launch
+# or short form:
+claudini use work -l
+```
+
 ### List profiles
 
 ```bash
@@ -229,4 +237,4 @@ When switching profiles, claudini copies **shared fields** from the outgoing pro
 
 - macOS (uses macOS Keychain via the `keyring` crate with `apple-native` feature)
 - Rust 1.70+
-- `claude` CLI on PATH (for `add --login`)
+- `claude` CLI on PATH (for `add --login` and `use --launch`)
