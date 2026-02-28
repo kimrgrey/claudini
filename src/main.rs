@@ -96,6 +96,11 @@ enum BackupCommand {
         /// Backup name
         name: String,
     },
+    /// Delete a named backup
+    Delete {
+        /// Backup name
+        name: String,
+    },
     /// List available backups
     List,
 }
@@ -334,6 +339,23 @@ fn run(cli: Cli) -> Result<()> {
                 } else {
                     println!(
                         "{} Backup '{}' restored",
+                        style("✓").green().bold(),
+                        style(&name).cyan()
+                    );
+                }
+            }
+
+            BackupCommand::Delete { name } => {
+                backup::delete(&claudini_dir, &name)?;
+
+                if is_json {
+                    println!(
+                        "{}",
+                        serde_json::json!({ "status": "deleted", "name": name })
+                    );
+                } else {
+                    println!(
+                        "{} Backup '{}' deleted",
                         style("✓").green().bold(),
                         style(&name).cyan()
                     );

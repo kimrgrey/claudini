@@ -77,6 +77,19 @@ pub fn restore(claudini_dir: &Path, claude_home: &Path, name: &str) -> Result<()
     Ok(())
 }
 
+/// Delete a named backup.
+pub fn delete(claudini_dir: &Path, name: &str) -> Result<()> {
+    let bdir = backup_dir(claudini_dir, name);
+    if !bdir.exists() {
+        bail!("Backup '{}' does not exist", name);
+    }
+
+    std::fs::remove_dir_all(&bdir).context("Failed to remove backup directory")?;
+    let _ = keychain::delete_backup(name);
+
+    Ok(())
+}
+
 /// List available backups.
 pub fn list(claudini_dir: &Path) -> Result<Vec<String>> {
     config_list_backups(claudini_dir)

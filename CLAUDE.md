@@ -28,6 +28,7 @@ claudini profile rename <old> <new>
 claudini profile current
 claudini backup create <name>
 claudini backup restore <name>
+claudini backup delete <name>
 claudini backup list
 ```
 
@@ -54,7 +55,7 @@ claudini backup list
 ## Git & PR conventions
 
 - Do not add Claude as a co-author to commit messages and PR descriptions
-- Do not commit unless explicitly asked to
+- **NEVER commit or push unless the user explicitly asks to** — this is a hard rule, no exceptions
 - Do not push branches unless explicitly asked to
 - Never force push (`git push --force` / `git push -f`) branches to GitHub
 - To resolve conflicts with main, use `git pull origin main` instead of `git rebase` (rebase requires force push)

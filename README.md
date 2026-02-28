@@ -169,6 +169,14 @@ claudini backup restore before-upgrade
 
 Replaces current config, credentials, and `~/.claude/` directory from the named backup.
 
+### Delete a backup
+
+```bash
+claudini backup delete before-upgrade
+```
+
+Deletes a backup's stored data and its Keychain credential.
+
 ### List backups
 
 ```bash
