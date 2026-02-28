@@ -32,6 +32,12 @@ enum Command {
     /// Initialize claudini (create ~/.claudini/ directory structure)
     Init,
 
+    /// Switch to a different profile (shortcut for `profile use`)
+    Use {
+        /// Profile name
+        name: String,
+    },
+
     /// Manage profiles
     Profile {
         #[command(subcommand)]
@@ -170,6 +176,25 @@ fn run(cli: Cli) -> Result<()> {
                         );
                     }
                 }
+            }
+        }
+
+        Command::Use { name } => {
+            let spinner = make_spinner(is_json, "Switching profile...");
+            profile::switch(&claudini_dir, &claude_home, &name)?;
+            finish_spinner(spinner);
+
+            if is_json {
+                println!(
+                    "{}",
+                    serde_json::json!({ "status": "switched", "profile": name })
+                );
+            } else {
+                println!(
+                    "{} Switched to profile '{}'",
+                    style("✓").green().bold(),
+                    style(&name).cyan()
+                );
             }
         }
 

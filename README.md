@@ -116,10 +116,10 @@ Saves the current credential, clears auth, launches `claude` for interactive OAu
 ### Switch between profiles
 
 ```bash
-claudini profile use work
+claudini use work
 ```
 
-Syncs shared fields, swaps the symlink and keychain credential.
+Syncs shared fields, swaps the symlink and keychain credential. `claudini use` is a shortcut for `claudini profile use`.
 
 ### List profiles
 
