@@ -32,6 +32,36 @@ Claude Code stores authentication in two places: `~/.claude.json` (account metad
 
 ## Installation
 
+### Quick install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kimrgrey/claudini/main/install.sh | sh
+```
+
+The script detects your Mac's architecture (Apple Silicon or Intel), downloads the matching binary from the latest GitHub Release, and installs it to `/usr/local/bin/claudini`.
+
+To install to a custom location:
+
+```bash
+INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/kimrgrey/claudini/main/install.sh | sh
+```
+
+### From GitHub Releases
+
+Download the binary for your architecture from the [latest release](https://github.com/kimrgrey/claudini/releases/latest):
+
+- **Apple Silicon:** `claudini-aarch64-apple-darwin`
+- **Intel:** `claudini-x86_64-apple-darwin`
+
+Then make it executable and move it to your PATH:
+
+```bash
+chmod +x claudini-*
+mv claudini-* /usr/local/bin/claudini
+```
+
+### From source
+
 ```bash
 cargo install --path .
 ```
