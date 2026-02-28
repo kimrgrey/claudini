@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 description = "CLI for switching Claude Code accounts"
 license = "MIT"
+repository = "https://github.com/kimrgrey/claudini"
+authors = ["Sergei Tsvetkov <tsvetkov@hey.com>"]
 
 [dependencies]
 anyhow = "1"
