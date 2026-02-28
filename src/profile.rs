@@ -3,17 +3,34 @@ use std::path::Path;
 use anyhow::{bail, Context, Result};
 use serde_json::Value;
 
+use crate::backup;
 use crate::config::{
-    claude_json_path, is_initialized, list_profiles, profile_claude_json, profile_credentials,
+    claude_json_path, is_initialized, list_profiles, profile_claude_json,
     profile_dir, profiles_dir, Config,
 };
 use crate::keychain;
 use crate::sync::sync_shared_fields;
 
+pub enum InitResult {
+    /// Fresh initialization was performed.
+    Initialized,
+    /// Already initialized; ran credential migration.
+    AlreadyInitialized {
+        profiles_migrated: usize,
+        backups_migrated: usize,
+    },
+}
+
 /// Initialize claudini: create directory structure and config.json.
-pub fn init(claudini_dir: &Path) -> Result<()> {
+/// If already initialized, migrate any legacy credential files to the Keychain.
+pub fn init(claudini_dir: &Path) -> Result<InitResult> {
     if is_initialized(claudini_dir) {
-        bail!("Already initialized (config.json exists at {})", claudini_dir.display());
+        let profiles_migrated = migrate_all_profile_credentials(claudini_dir);
+        let backups_migrated = backup::migrate_all_backup_credentials(claudini_dir);
+        return Ok(InitResult::AlreadyInitialized {
+            profiles_migrated,
+            backups_migrated,
+        });
     }
 
     std::fs::create_dir_all(profiles_dir(claudini_dir))
@@ -24,7 +41,7 @@ pub fn init(claudini_dir: &Path) -> Result<()> {
     };
     cfg.save(claudini_dir)?;
 
-    Ok(())
+    Ok(InitResult::Initialized)
 }
 
 /// Add the current auth as a named profile.
@@ -39,7 +56,7 @@ pub fn add(claudini_dir: &Path, claude_home: &Path, name: &str) -> Result<()> {
 
     // Save keychain credential
     let cred = keychain::read().context("No keychain credential found — are you logged in?")?;
-    std::fs::write(profile_credentials(claudini_dir, name), &cred)?;
+    keychain::write_profile(name, &cred)?;
 
     // Handle claude.json
     let cj = claude_json_path(claude_home);
@@ -85,7 +102,7 @@ pub fn add_with_login(claudini_dir: &Path, claude_home: &Path, name: &str) -> Re
     // Save current keychain credential to current active profile (if any)
     if let Some(ref active) = cfg.active_profile {
         if let Ok(cred) = keychain::read() {
-            let _ = std::fs::write(profile_credentials(claudini_dir, active), &cred);
+            let _ = keychain::write_profile(active, &cred);
         }
     }
 
@@ -117,7 +134,7 @@ pub fn add_with_login(claudini_dir: &Path, claude_home: &Path, name: &str) -> Re
     std::fs::create_dir_all(&pdir)?;
 
     let cred = keychain::read().context("No keychain credential after login")?;
-    std::fs::write(profile_credentials(claudini_dir, name), &cred)?;
+    keychain::write_profile(name, &cred)?;
 
     let target = profile_claude_json(claudini_dir, name);
     std::fs::rename(&cj, &target).context("Failed to move new claude.json")?;
@@ -147,7 +164,7 @@ pub fn switch(claudini_dir: &Path, claude_home: &Path, name: &str) -> Result<()>
     // Save current keychain credential to outgoing profile
     if let Some(ref active) = cfg.active_profile {
         if let Ok(cred) = keychain::read() {
-            let _ = std::fs::write(profile_credentials(claudini_dir, active), &cred);
+            let _ = keychain::write_profile(active, &cred);
         }
 
         // Sync shared fields from outgoing → incoming
@@ -179,10 +196,12 @@ pub fn switch(claudini_dir: &Path, claude_home: &Path, name: &str) -> Result<()>
     std::os::unix::fs::symlink(&target, &cj)
         .context("Failed to create symlink for .claude.json")?;
 
+    // Migrate legacy credentials file if present
+    migrate_profile_credential_if_needed(claudini_dir, name);
+
     // Write incoming profile's credential to keychain
-    let cred_path = profile_credentials(claudini_dir, name);
-    let cred = std::fs::read_to_string(&cred_path)
-        .with_context(|| format!("No credentials file for profile '{}'", name))?;
+    let cred = keychain::read_profile(name)
+        .with_context(|| format!("No credential found for profile '{name}'"))?;
     keychain::write(&cred)?;
 
     // Update config
@@ -228,6 +247,7 @@ pub fn remove(claudini_dir: &Path, name: &str) -> Result<()> {
     }
 
     std::fs::remove_dir_all(&pdir).context("Failed to remove profile directory")?;
+    let _ = keychain::delete_profile(name);
 
     Ok(())
 }
@@ -248,9 +268,22 @@ pub fn rename(claudini_dir: &Path, claude_home: &Path, old_name: &str, new_name:
 
     std::fs::rename(&old_dir, &new_dir).context("Failed to rename profile directory")?;
 
-    // Update config if this was the active profile
+    // Migrate keychain entry: read old → write new → delete old
     let mut cfg = Config::load(claudini_dir)?;
-    if cfg.active_profile.as_deref() == Some(old_name) {
+    let is_active = cfg.active_profile.as_deref() == Some(old_name);
+
+    if is_active {
+        // Active profile: credential lives in the main keychain entry, not in the profile entry
+        if let Ok(cred) = keychain::read() {
+            let _ = keychain::write_profile(new_name, &cred);
+        }
+    } else if let Ok(cred) = keychain::read_profile(old_name) {
+        keychain::write_profile(new_name, &cred)?;
+    }
+    let _ = keychain::delete_profile(old_name);
+
+    // Update config if this was the active profile
+    if is_active {
         cfg.active_profile = Some(new_name.to_string());
         cfg.save(claudini_dir)?;
 
@@ -280,6 +313,40 @@ pub fn current(claudini_dir: &Path, claude_home: &Path) -> Result<(String, Optio
     let email = read_email_from_claude_json(&cj);
 
     Ok((name, email))
+}
+
+/// Migrate all legacy profile credential files to the Keychain.
+/// Returns the number of profiles migrated.
+pub fn migrate_all_profile_credentials(claudini_dir: &Path) -> usize {
+    let profiles = match list_profiles(claudini_dir) {
+        Ok(p) => p,
+        Err(_) => return 0,
+    };
+
+    let mut count = 0;
+    for name in &profiles {
+        let cred_file = profile_dir(claudini_dir, name).join("credentials");
+        if cred_file.is_file() {
+            if let Ok(cred) = std::fs::read_to_string(&cred_file) {
+                if keychain::write_profile(name, &cred).is_ok() {
+                    let _ = std::fs::remove_file(&cred_file);
+                    count += 1;
+                }
+            }
+        }
+    }
+    count
+}
+
+fn migrate_profile_credential_if_needed(claudini_dir: &Path, name: &str) {
+    let cred_file = profile_dir(claudini_dir, name).join("credentials");
+    if cred_file.is_file() {
+        if let Ok(cred) = std::fs::read_to_string(&cred_file) {
+            if keychain::write_profile(name, &cred).is_ok() {
+                let _ = std::fs::remove_file(&cred_file);
+            }
+        }
+    }
 }
 
 fn read_email_from_claude_json(path: &Path) -> Option<String> {

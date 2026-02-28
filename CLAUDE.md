@@ -33,11 +33,16 @@ claudini backup list
 
 ## Architecture
 
-- Profiles stored under `~/.claudini/profiles/<name>/` with `claude.json` + `credentials`
-- Backups stored under `~/.claudini/backups/<name>/` with `claude.json`, `credentials`, and `claude/` dir
+- Profiles stored under `~/.claudini/profiles/<name>/` with `claude.json`
+- Backups stored under `~/.claudini/backups/<name>/` with `claude.json` and `claude/` dir
+- All credentials stored in macOS Keychain (never as plain text files on disk)
+  - Active credential: service `"Claude Code-credentials"` (read directly by Claude Code)
+  - Profile credentials: service `"claudini-profile-<name>"`
+  - Backup credentials: service `"claudini-backup-<name>"`
 - `~/.claude.json` is a symlink to the active profile's `claude.json`
 - Keychain entry `Claude Code-credentials` is swapped on profile switch
 - Shared fields (non-account-specific) are synced from outgoing to incoming profile on switch
+- Legacy plain text `credentials` files are auto-migrated to Keychain on access or via `claudini init`
 
 ## Key conventions
 

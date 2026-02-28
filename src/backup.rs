@@ -24,7 +24,7 @@ pub fn create(claudini_dir: &Path, claude_home: &Path, name: &str) -> Result<()>
 
     // Save keychain credential
     if let Ok(cred) = keychain::read() {
-        std::fs::write(bdir.join("credentials"), &cred)?;
+        keychain::write_backup(name, &cred)?;
     }
 
     // Copy ~/.claude/ directory
@@ -54,13 +54,13 @@ pub fn restore(claudini_dir: &Path, claude_home: &Path, name: &str) -> Result<()
         std::fs::copy(&backup_cj, &cj).context("Failed to restore claude.json")?;
     }
 
+    // Migrate legacy credentials file if present
+    migrate_backup_credential_if_needed(claudini_dir, name);
+
     // Restore credentials to keychain
-    let backup_cred = bdir.join("credentials");
-    if backup_cred.exists() {
-        let cred = std::fs::read_to_string(&backup_cred)
-            .context("Failed to read backup credentials")?;
-        keychain::write(&cred)?;
-    }
+    let cred = keychain::read_backup(name)
+        .with_context(|| format!("No credential found for backup '{name}'"))?;
+    keychain::write(&cred)?;
 
     // Restore ~/.claude/ directory
     let backup_claude_dir = bdir.join("claude");
@@ -80,6 +80,40 @@ pub fn restore(claudini_dir: &Path, claude_home: &Path, name: &str) -> Result<()
 /// List available backups.
 pub fn list(claudini_dir: &Path) -> Result<Vec<String>> {
     config_list_backups(claudini_dir)
+}
+
+/// Migrate all legacy backup credential files to the Keychain.
+/// Returns the number of backups migrated.
+pub fn migrate_all_backup_credentials(claudini_dir: &Path) -> usize {
+    let backups = match config_list_backups(claudini_dir) {
+        Ok(b) => b,
+        Err(_) => return 0,
+    };
+
+    let mut count = 0;
+    for name in &backups {
+        let cred_file = backup_dir(claudini_dir, name).join("credentials");
+        if cred_file.is_file() {
+            if let Ok(cred) = std::fs::read_to_string(&cred_file) {
+                if keychain::write_backup(name, &cred).is_ok() {
+                    let _ = std::fs::remove_file(&cred_file);
+                    count += 1;
+                }
+            }
+        }
+    }
+    count
+}
+
+fn migrate_backup_credential_if_needed(claudini_dir: &Path, name: &str) {
+    let cred_file = backup_dir(claudini_dir, name).join("credentials");
+    if cred_file.is_file() {
+        if let Ok(cred) = std::fs::read_to_string(&cred_file) {
+            if keychain::write_backup(name, &cred).is_ok() {
+                let _ = std::fs::remove_file(&cred_file);
+            }
+        }
+    }
 }
 
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {

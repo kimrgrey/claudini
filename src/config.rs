@@ -49,11 +49,6 @@ pub fn profile_claude_json(claudini_dir: &Path, name: &str) -> PathBuf {
     profile_dir(claudini_dir, name).join("claude.json")
 }
 
-/// Returns the path to `~/.claudini/profiles/<name>/credentials`.
-pub fn profile_credentials(claudini_dir: &Path, name: &str) -> PathBuf {
-    profile_dir(claudini_dir, name).join("credentials")
-}
-
 /// Returns the path to `~/.claudini/backups/`.
 pub fn backups_dir(claudini_dir: &Path) -> PathBuf {
     claudini_dir.join("backups")

@@ -122,15 +122,49 @@ fn run(cli: Cli) -> Result<()> {
 
     match cli.command {
         Command::Init => {
-            profile::init(&claudini_dir)?;
-            if is_json {
-                println!("{}", serde_json::json!({ "status": "initialized" }));
-            } else {
-                println!(
-                    "{} Initialized claudini at {}",
-                    style("✓").green().bold(),
-                    style(claudini_dir.display()).cyan()
-                );
+            match profile::init(&claudini_dir)? {
+                profile::InitResult::Initialized => {
+                    if is_json {
+                        println!("{}", serde_json::json!({ "status": "initialized" }));
+                    } else {
+                        println!(
+                            "{} Initialized claudini at {}",
+                            style("✓").green().bold(),
+                            style(claudini_dir.display()).cyan()
+                        );
+                    }
+                }
+                profile::InitResult::AlreadyInitialized {
+                    profiles_migrated,
+                    backups_migrated,
+                } => {
+                    let total = profiles_migrated + backups_migrated;
+                    if is_json {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "status": "already_initialized",
+                                "credentials_migrated": {
+                                    "profiles": profiles_migrated,
+                                    "backups": backups_migrated,
+                                }
+                            })
+                        );
+                    } else if total > 0 {
+                        println!(
+                            "{} Already initialized. Migrated {} credential(s) to Keychain ({} profile, {} backup).",
+                            style("✓").green().bold(),
+                            total,
+                            profiles_migrated,
+                            backups_migrated
+                        );
+                    } else {
+                        println!(
+                            "{} Already initialized (no legacy credentials to migrate).",
+                            style("✓").green().bold(),
+                        );
+                    }
+                }
             }
         }
 

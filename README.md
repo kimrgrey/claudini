@@ -2,14 +2,15 @@
 
 CLI for switching between multiple Claude Code accounts on macOS.
 
-Claude Code stores authentication in two places: `~/.claude.json` (account metadata) and the macOS Keychain (`Claude Code-credentials`). **claudini** manages named profiles that bundle both, letting you switch accounts with a single command.
+Claude Code stores authentication in two places: `~/.claude.json` (account metadata) and the macOS Keychain (`Claude Code-credentials`). **claudini** manages named profiles that bundle both, letting you switch accounts with a single command. All credentials are stored securely in the macOS Keychain — nothing is ever written to disk as plain text.
 
 ## How it works
 
-- Each profile stores its own copy of `claude.json` and the keychain credential
+- Each profile stores its own `claude.json` on disk and its credential in the macOS Keychain
 - `~/.claude.json` becomes a **symlink** pointing to the active profile's `claude.json`
 - On switch, the keychain credential is swapped and **shared fields** (projects, settings, usage history) are synced from the outgoing profile to the incoming one
 - Account-specific fields (OAuth tokens, user ID, org caches) stay per-profile
+- Credentials never touch the filesystem — they are read from and written to the Keychain directly
 
 ### Storage layout
 
@@ -19,15 +20,18 @@ Claude Code stores authentication in two places: `~/.claude.json` (account metad
   profiles/
     personal/
       claude.json              # account-specific claude.json
-      credentials              # keychain credential for this account
     work/
       claude.json
-      credentials
   backups/
     before-upgrade/
       claude.json              # snapshot of ~/.claude.json
-      credentials              # snapshot of keychain credential
       claude/                  # snapshot of ~/.claude/ directory
+
+macOS Keychain:
+  "Claude Code-credentials"          # active credential (read by Claude Code)
+  "claudini-profile-personal"        # personal profile credential
+  "claudini-profile-work"            # work profile credential
+  "claudini-backup-before-upgrade"   # backup credential
 ```
 
 ## Installation
@@ -91,7 +95,7 @@ This saves a snapshot of your `~/.claude.json`, keychain credential, and `~/.cla
 claudini init
 ```
 
-Creates the `~/.claudini/` directory structure and `config.json`.
+Creates the `~/.claudini/` directory structure and `config.json`. If already initialized, migrates any legacy plain text credential files to the Keychain.
 
 ### Save your current account as a profile
 
@@ -147,7 +151,7 @@ Renames a profile. If it's the active profile, the symlink and config are update
 claudini profile remove work
 ```
 
-Deletes a profile's stored data. Cannot remove the currently active profile.
+Deletes a profile's stored data and its Keychain credential. Cannot remove the currently active profile.
 
 ### Create a backup
 
