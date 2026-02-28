@@ -1,5 +1,5 @@
-use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*;
 
 fn claudini() -> Command {
@@ -21,7 +21,9 @@ fn help_flag() {
         .arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("CLI for switching Claude Code accounts"));
+        .stdout(predicate::str::contains(
+            "CLI for switching Claude Code accounts",
+        ));
 }
 
 #[test]

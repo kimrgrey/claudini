@@ -66,6 +66,7 @@ claudini backup list
 - Try to keep branch names short but readable
 - Always remove previously added but now unused code
 - Do not include test plans in PR descriptions or commit messages
+- Before committing, always run `cargo fmt` and `cargo clippy --all-targets -- -D warnings` and fix any issues
 
 ## Build & run
 
