@@ -64,6 +64,7 @@ claudini backup list
 - Always ask before using `--admin` flag when merging PRs — it bypasses branch protection checks
 - Try to keep branch names short but readable
 - Always remove previously added but now unused code
+- Do not include test plans in PR descriptions or commit messages
 
 ## Build & run
 
