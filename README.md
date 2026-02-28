@@ -75,6 +75,16 @@ cargo build --release
 
 ## Usage
 
+### Before you start
+
+Create a backup of your current Claude Code configuration before making any changes:
+
+```bash
+claudini backup create init
+```
+
+This saves a snapshot of your `~/.claude.json`, keychain credential, and `~/.claude/` directory so you can restore if anything goes wrong.
+
 ### First-time setup
 
 ```bash
