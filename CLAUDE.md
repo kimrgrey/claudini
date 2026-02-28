@@ -20,6 +20,7 @@ claudini/
 
 ```
 claudini init
+claudini <name>                      # switch and launch claude
 claudini use <name> [--launch]       # shortcut for profile use
 claudini profile add <name> [--login]
 claudini profile use <name> [--launch]

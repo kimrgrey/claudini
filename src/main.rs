@@ -7,7 +7,7 @@ mod update;
 
 use std::path::PathBuf;
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, Color, Table};
 use console::style;
@@ -42,6 +42,10 @@ enum Command {
         #[arg(short, long)]
         launch: bool,
     },
+
+    /// Catch-all: treat unknown subcommand as profile name, switch and launch claude
+    #[command(external_subcommand)]
+    Run(Vec<String>),
 
     /// Manage profiles
     Profile {
@@ -193,28 +197,15 @@ fn run(cli: Cli) -> Result<()> {
         }
 
         Command::Use { name, launch } => {
-            let spinner = make_spinner(is_json, "Switching profile...");
-            profile::switch(&claudini_dir, &claude_home, &name)?;
-            finish_spinner(spinner);
+            switch_profile(&claudini_dir, &claude_home, &name, launch, is_json)?;
+        }
 
-            if is_json {
-                println!(
-                    "{}",
-                    serde_json::json!({ "status": "switched", "profile": name })
-                );
-            } else {
-                println!(
-                    "{} Switched to profile '{}'",
-                    style("✓").green().bold(),
-                    style(&name).cyan()
-                );
+        Command::Run(args) => {
+            let name = args.first().context("Profile name required")?;
+            if args.len() > 1 {
+                bail!("Unexpected arguments after profile name: {}", args[1..].join(" "));
             }
-
-            if launch && !is_json {
-                use std::os::unix::process::CommandExt;
-                let err = std::process::Command::new("claude").exec();
-                bail!("Failed to launch claude: {}", err);
-            }
+            switch_profile(&claudini_dir, &claude_home, name, true, is_json)?;
         }
 
         Command::Profile { command } => match command {
@@ -248,28 +239,7 @@ fn run(cli: Cli) -> Result<()> {
             }
 
             ProfileCommand::Use { name, launch } => {
-                let spinner = make_spinner(is_json, "Switching profile...");
-                profile::switch(&claudini_dir, &claude_home, &name)?;
-                finish_spinner(spinner);
-
-                if is_json {
-                    println!(
-                        "{}",
-                        serde_json::json!({ "status": "switched", "profile": name })
-                    );
-                } else {
-                    println!(
-                        "{} Switched to profile '{}'",
-                        style("✓").green().bold(),
-                        style(&name).cyan()
-                    );
-                }
-
-                if launch && !is_json {
-                    use std::os::unix::process::CommandExt;
-                    let err = std::process::Command::new("claude").exec();
-                    bail!("Failed to launch claude: {}", err);
-                }
+                switch_profile(&claudini_dir, &claude_home, &name, launch, is_json)?;
             }
 
             ProfileCommand::List => {
@@ -427,6 +397,39 @@ fn run(cli: Cli) -> Result<()> {
             }
         },
 
+    }
+
+    Ok(())
+}
+
+fn switch_profile(
+    claudini_dir: &std::path::Path,
+    claude_home: &std::path::Path,
+    name: &str,
+    launch: bool,
+    is_json: bool,
+) -> Result<()> {
+    let spinner = make_spinner(is_json, "Switching profile...");
+    profile::switch(claudini_dir, claude_home, name)?;
+    finish_spinner(spinner);
+
+    if is_json {
+        println!(
+            "{}",
+            serde_json::json!({ "status": "switched", "profile": name })
+        );
+    } else {
+        println!(
+            "{} Switched to profile '{}'",
+            style("✓").green().bold(),
+            style(name).cyan()
+        );
+    }
+
+    if launch && !is_json {
+        use std::os::unix::process::CommandExt;
+        let err = std::process::Command::new("claude").exec();
+        bail!("Failed to launch claude: {}", err);
     }
 
     Ok(())

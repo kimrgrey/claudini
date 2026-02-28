@@ -128,8 +128,9 @@ Syncs shared fields, swaps the symlink and keychain credential. `claudini use` i
 To switch and immediately launch Claude Code in one step:
 
 ```bash
+claudini work
+# or equivalently:
 claudini use work --launch
-# or short form:
 claudini use work -l
 ```
 
