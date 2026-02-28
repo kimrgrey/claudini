@@ -3,6 +3,7 @@ mod config;
 mod keychain;
 mod profile;
 mod sync;
+mod update;
 
 use std::path::PathBuf;
 
@@ -13,7 +14,7 @@ use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Parser)]
-#[command(name = "claudini", about = "CLI for switching Claude Code accounts")]
+#[command(name = "claudini", about = "CLI for switching Claude Code accounts", version)]
 struct Cli {
     /// Output as JSON (machine-readable, no colors/spinners)
     #[arg(long, global = true)]
@@ -123,6 +124,10 @@ fn main() {
             eprintln!("{} {:#}", style("error:").red().bold(), e);
         }
         std::process::exit(1);
+    }
+
+    if let Ok(claudini_dir) = config::claudini_dir() {
+        update::check_and_notify(&claudini_dir, is_json);
     }
 }
 
