@@ -25,7 +25,7 @@ struct Cli {
     claude_home: Option<PathBuf>,
 
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Subcommand)]
@@ -148,7 +148,28 @@ fn run(cli: Cli) -> Result<()> {
     let claude_home = config::resolve_claude_home(cli.claude_home.as_deref())?;
     let is_json = cli.json;
 
-    match cli.command {
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            let (name, email) = profile::current(&claudini_dir, &claude_home)?;
+
+            if is_json {
+                println!(
+                    "{}",
+                    serde_json::json!({ "profile": name, "email": email })
+                );
+            } else {
+                println!("{} {}", style("Profile:").bold(), style(&name).cyan());
+                match email {
+                    Some(e) => println!("{} {}", style("Email:").bold(), style(e).cyan()),
+                    None => println!("{} (unknown)", style("Email:").bold()),
+                }
+            }
+            return Ok(());
+        }
+    };
+
+    match command {
         Command::Init => {
             match profile::init(&claudini_dir)? {
                 profile::InitResult::Initialized => {
