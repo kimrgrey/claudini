@@ -54,6 +54,7 @@ claudini backup list
 - Two output modes: human (colored, spinners, tables) and JSON (`--json` flag)
 - Claude home directory overridable via `--claude-home` flag or `CLAUDINI_CLAUDE_HOME` env var
 - Account-specific fields listed in `sync.rs::ACCOUNT_SPECIFIC_FIELDS`
+- When stdout is not a terminal (piped/redirected), colors should be stripped from table output and `console::Style` is skipped entirely. Redirecting command output to a file should produce clean text.
 
 ## Git & PR conventions
 

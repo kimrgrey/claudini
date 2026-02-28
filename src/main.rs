@@ -5,6 +5,7 @@ mod profile;
 mod sync;
 mod update;
 
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
@@ -152,6 +153,8 @@ fn run(cli: Cli) -> Result<()> {
     let claude_home = config::resolve_claude_home(cli.claude_home.as_deref())?;
     let is_json = cli.json;
 
+    console::set_colors_enabled(!is_json && std::io::stdout().is_terminal());
+
     let command = match cli.command {
         Some(cmd) => cmd,
         None => {
@@ -280,12 +283,16 @@ fn run(cli: Cli) -> Result<()> {
                     let mut table = Table::new();
                     table.load_preset(UTF8_FULL_CONDENSED);
                     table.set_header(vec!["Profile", "Status"]);
+                    let use_color = console::colors_enabled();
                     for (name, active) in &profiles {
                         if *active {
-                            table.add_row(vec![
-                                Cell::new(name).fg(Color::Cyan),
-                                Cell::new("active").fg(Color::Green),
-                            ]);
+                            let mut name_cell = Cell::new(name);
+                            let mut status_cell = Cell::new("active");
+                            if use_color {
+                                name_cell = name_cell.fg(Color::Cyan);
+                                status_cell = status_cell.fg(Color::Green);
+                            }
+                            table.add_row(vec![name_cell, status_cell]);
                         } else {
                             table.add_row(vec![Cell::new(name), Cell::new("")]);
                         }
