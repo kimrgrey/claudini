@@ -1,7 +1,6 @@
 ---
 name: release
 description: Create a new claudini release by tagging and pushing
-disable-model-invocation: true
 allowed-tools: Bash
 argument-hint: <version>
 ---
