@@ -7,14 +7,18 @@ mod update;
 
 use std::path::PathBuf;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
-use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, Color, Table};
+use comfy_table::{Cell, Color, Table, presets::UTF8_FULL_CONDENSED};
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Parser)]
-#[command(name = "claudini", about = "CLI for switching Claude Code accounts", version)]
+#[command(
+    name = "claudini",
+    about = "CLI for switching Claude Code accounts",
+    version
+)]
 struct Cli {
     /// Output as JSON (machine-readable, no colors/spinners)
     #[arg(long, global = true)]
@@ -154,10 +158,7 @@ fn run(cli: Cli) -> Result<()> {
             let (name, email) = profile::current(&claudini_dir, &claude_home)?;
 
             if is_json {
-                println!(
-                    "{}",
-                    serde_json::json!({ "profile": name, "email": email })
-                );
+                println!("{}", serde_json::json!({ "profile": name, "email": email }));
             } else {
                 println!("{} {}", style("Profile:").bold(), style(&name).cyan());
                 match email {
@@ -170,52 +171,50 @@ fn run(cli: Cli) -> Result<()> {
     };
 
     match command {
-        Command::Init => {
-            match profile::init(&claudini_dir)? {
-                profile::InitResult::Initialized => {
-                    if is_json {
-                        println!("{}", serde_json::json!({ "status": "initialized" }));
-                    } else {
-                        println!(
-                            "{} Initialized claudini at {}",
-                            style("✓").green().bold(),
-                            style(claudini_dir.display()).cyan()
-                        );
-                    }
-                }
-                profile::InitResult::AlreadyInitialized {
-                    profiles_migrated,
-                    backups_migrated,
-                } => {
-                    let total = profiles_migrated + backups_migrated;
-                    if is_json {
-                        println!(
-                            "{}",
-                            serde_json::json!({
-                                "status": "already_initialized",
-                                "credentials_migrated": {
-                                    "profiles": profiles_migrated,
-                                    "backups": backups_migrated,
-                                }
-                            })
-                        );
-                    } else if total > 0 {
-                        println!(
-                            "{} Already initialized. Migrated {} credential(s) to Keychain ({} profile, {} backup).",
-                            style("✓").green().bold(),
-                            total,
-                            profiles_migrated,
-                            backups_migrated
-                        );
-                    } else {
-                        println!(
-                            "{} Already initialized (no legacy credentials to migrate).",
-                            style("✓").green().bold(),
-                        );
-                    }
+        Command::Init => match profile::init(&claudini_dir)? {
+            profile::InitResult::Initialized => {
+                if is_json {
+                    println!("{}", serde_json::json!({ "status": "initialized" }));
+                } else {
+                    println!(
+                        "{} Initialized claudini at {}",
+                        style("✓").green().bold(),
+                        style(claudini_dir.display()).cyan()
+                    );
                 }
             }
-        }
+            profile::InitResult::AlreadyInitialized {
+                profiles_migrated,
+                backups_migrated,
+            } => {
+                let total = profiles_migrated + backups_migrated;
+                if is_json {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "status": "already_initialized",
+                            "credentials_migrated": {
+                                "profiles": profiles_migrated,
+                                "backups": backups_migrated,
+                            }
+                        })
+                    );
+                } else if total > 0 {
+                    println!(
+                        "{} Already initialized. Migrated {} credential(s) to Keychain ({} profile, {} backup).",
+                        style("✓").green().bold(),
+                        total,
+                        profiles_migrated,
+                        backups_migrated
+                    );
+                } else {
+                    println!(
+                        "{} Already initialized (no legacy credentials to migrate).",
+                        style("✓").green().bold(),
+                    );
+                }
+            }
+        },
 
         Command::Use { name, launch } => {
             switch_profile(&claudini_dir, &claude_home, &name, launch, is_json)?;
@@ -224,7 +223,10 @@ fn run(cli: Cli) -> Result<()> {
         Command::Run(args) => {
             let name = args.first().context("Profile name required")?;
             if args.len() > 1 {
-                bail!("Unexpected arguments after profile name: {}", args[1..].join(" "));
+                bail!(
+                    "Unexpected arguments after profile name: {}",
+                    args[1..].join(" ")
+                );
             }
             switch_profile(&claudini_dir, &claude_home, name, true, is_json)?;
         }
@@ -269,9 +271,7 @@ fn run(cli: Cli) -> Result<()> {
                 if is_json {
                     let items: Vec<_> = profiles
                         .iter()
-                        .map(|(name, active)| {
-                            serde_json::json!({ "name": name, "active": active })
-                        })
+                        .map(|(name, active)| serde_json::json!({ "name": name, "active": active }))
                         .collect();
                     println!("{}", serde_json::to_string_pretty(&items)?);
                 } else if profiles.is_empty() {
@@ -333,10 +333,7 @@ fn run(cli: Cli) -> Result<()> {
                 let (name, email) = profile::current(&claudini_dir, &claude_home)?;
 
                 if is_json {
-                    println!(
-                        "{}",
-                        serde_json::json!({ "profile": name, "email": email })
-                    );
+                    println!("{}", serde_json::json!({ "profile": name, "email": email }));
                 } else {
                     println!("{} {}", style("Profile:").bold(), style(&name).cyan());
                     match email {
@@ -417,7 +414,6 @@ fn run(cli: Cli) -> Result<()> {
                 }
             }
         },
-
     }
 
     Ok(())

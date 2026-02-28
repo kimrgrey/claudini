@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 const SERVICE_NAME: &str = "Claude Code-credentials";
 
@@ -33,13 +33,18 @@ fn security_write(service: &str, data: &str, trusted_apps: &[String]) -> Result<
 
     let mut args = vec![
         "add-generic-password".to_string(),
-        "-s".to_string(), service.to_string(),
-        "-a".to_string(), user,
-        "-w".to_string(), data.to_string(),
+        "-s".to_string(),
+        service.to_string(),
+        "-a".to_string(),
+        user,
+        "-w".to_string(),
+        data.to_string(),
     ];
 
     if trusted_apps.is_empty() {
-        bail!("No trusted applications resolved — refusing to create a keychain entry with unrestricted access");
+        bail!(
+            "No trusted applications resolved — refusing to create a keychain entry with unrestricted access"
+        );
     }
     for path in trusted_apps {
         args.push("-T".to_string());
@@ -68,7 +73,10 @@ fn security_delete(service: &str) -> Result<()> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("Failed to delete credential from keychain: {}", stderr.trim());
+        bail!(
+            "Failed to delete credential from keychain: {}",
+            stderr.trim()
+        );
     }
 
     Ok(())
@@ -84,10 +92,10 @@ fn trusted_app_paths() -> Vec<String> {
     }
 
     // claudini binary (ourselves)
-    if let Ok(exe) = std::env::current_exe() {
-        if let Ok(canonical) = exe.canonicalize() {
-            paths.push(canonical.to_string_lossy().into_owned());
-        }
+    if let Ok(exe) = std::env::current_exe()
+        && let Ok(canonical) = exe.canonicalize()
+    {
+        paths.push(canonical.to_string_lossy().into_owned());
     }
 
     // security binary (Claude Code may use it to read the credential)

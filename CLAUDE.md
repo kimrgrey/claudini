@@ -10,10 +10,11 @@ claudini/
   src/
     main.rs        # CLI entry point (clap derive), subcommand enums, output formatting
     config.rs      # Path helpers, Config struct, directory layout
-    keychain.rs    # macOS Keychain read/write/delete via keyring crate
+    keychain.rs    # macOS Keychain read/write/delete via security CLI
     profile.rs     # Profile operations: init, add, add --login, use, list, remove, rename, current
-    backup.rs      # Backup operations: create, restore, list
+    backup.rs      # Backup operations: create, restore, delete, list
     sync.rs        # Shared field sync between profiles
+    update.rs      # Version update checking via GitHub releases API
 ```
 
 ## CLI
@@ -78,7 +79,7 @@ cargo run -- <command>
 - `serde` + `serde_json` — JSON handling
 - `dirs` — home directory resolution
 - `anyhow` — error handling
-- `keyring` (apple-native) — macOS Keychain access
+- macOS `security` CLI — Keychain access (via `std::process::Command`)
 - `console` — terminal colors/styling
 - `indicatif` — progress spinners
 - `comfy-table` — formatted table output

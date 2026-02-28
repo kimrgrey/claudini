@@ -89,10 +89,10 @@ pub fn list_profiles(claudini_dir: &Path) -> Result<Vec<String>> {
     let mut names = Vec::new();
     for entry in std::fs::read_dir(&dir)? {
         let entry = entry?;
-        if entry.file_type()?.is_dir() {
-            if let Some(name) = entry.file_name().to_str() {
-                names.push(name.to_string());
-            }
+        if entry.file_type()?.is_dir()
+            && let Some(name) = entry.file_name().to_str()
+        {
+            names.push(name.to_string());
         }
     }
     names.sort();
@@ -108,10 +108,10 @@ pub fn list_backups(claudini_dir: &Path) -> Result<Vec<String>> {
     let mut names = Vec::new();
     for entry in std::fs::read_dir(&dir)? {
         let entry = entry?;
-        if entry.file_type()?.is_dir() {
-            if let Some(name) = entry.file_name().to_str() {
-                names.push(name.to_string());
-            }
+        if entry.file_type()?.is_dir()
+            && let Some(name) = entry.file_name().to_str()
+        {
+            names.push(name.to_string());
         }
     }
     names.sort();
